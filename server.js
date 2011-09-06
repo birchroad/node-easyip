@@ -1,6 +1,6 @@
 var easy = require('./easyip.js');
 
-var service = easy.createService(1024+995);
+var service = easy.createService(1024+easy.EASYIP_PORT);
 
 
 service.on('set', function(type, offset, size, values, rinfo){

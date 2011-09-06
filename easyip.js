@@ -77,9 +77,7 @@ function Packet(server, msg, rinfo){
 
 	this.end = function(callback){
 		header[FLAGS_FIELD]=flags;
-
 		var response_size = (payload!=null?payload.length + 20:20);
-
 		var buf = new Buffer(response_size);
 
 		jspack.PackTo(HEADER_FORMAT, buf, 0, header);
@@ -120,14 +118,11 @@ function Service(bind_port){
 		var header = jspack.Unpack(HEADER_FORMAT, msg, 0);
 		var flags = header[FLAGS_FIELD]; //get the header
 		var packet = new Packet(server, header, rinfo);
-		
-		
+				
 		var is_response = checkBit(packet.flags, FLAGS.RESPONSE_FLAG);
-		var ack=true;
-		if(is_response && checkBit(packet.flags, FLAGS.NO_ACK_FLAG)) { ack=false; }
-
+		var is_acknowleged=true;
+		if(is_response && checkBit(packet.flags, FLAGS.NO_ACK_FLAG)) { is_acknowleged=false; }
 		var is_request = packet.req_type != OPERANDS.OPERAND_EMPTY;
-
 		var has_payload = msg.length > 20; //anything more then a header is payload
 		
 		//can not be a send and response packet at the same time but both can carry a payload
@@ -136,20 +131,15 @@ function Service(bind_port){
 
 		}
 
-		
-		(packet.send_type != OPERAND_EMPTY);
+		// (packet.send_type != OPERAND_EMPTY);
 
-		if(!has_payload && 
+		// if(!has_payload && 
 		
+		// m.emit('message', packet, operand, payload)
 
-		m.emit('message', packet, operand, payload)
-
-		
-	
-
-		
 	     
-		if (packet.req_type != OPERANDS.OPERAND_EMPTY){
+		if (is_request){
+			//it's a request for something
 			console.log("req");
 			req.setFlags(FLAGS.RESPONSE_FLAG);
 			console.log("emit");
@@ -160,7 +150,7 @@ function Service(bind_port){
 			var req = new Packet(server, header, rinfo);
 			req.setFlags(FLAGS.RESPONSE_FLAG);
 			req.end(function(err,bytes){
-				//TODO:do something about errors perhaps..?
+				//TODO:do something about errors here perhaps..?
 			});
 		}
 	});
@@ -188,3 +178,4 @@ exports.createService = function(bind_port){
 };
 exports.FLAGS = FLAGS;
 exports.OPERANDS = OPERANDS;
+exports.EASYIP_PORT = EASYIP_PORT;

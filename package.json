@@ -13,5 +13,7 @@
     "node": "~v0.4.10"
   },
   "dependencies": {},
-  "devDependencies": {}
+  "devDependencies": {
+      "jspack": ">=0.0.1"
+  }
 }
