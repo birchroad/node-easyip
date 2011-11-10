@@ -10,9 +10,11 @@
   },
   "main": "./easyip.js",
   "engines": {
-    "node": "~v0.4.10"
+    "node": "~v0.6.0"
   },
-  "dependencies": {},
+  "dependencies": {
+    "jspack": ">0.0.1"
+  },
   "devDependencies": {
       "jspack": ">=0.0.1"
   }
