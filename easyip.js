@@ -1,3 +1,7 @@
+/*!
+ *  Copyright © 2011 Peter Magnusson.
+ *  All rights reserved.
+ */
 var dgram = require('dgram')
 	, EventEmitter = require('events').EventEmitter
 	, packets = require('./lib/packet')
@@ -7,7 +11,11 @@ var dgram = require('dgram')
 var EASYIP_PORT=995;
 
 
-//The constructor
+/**
+* The service constructor
+* @param {Number} port number to bind the service to
+*
+*/
 function Service(bind_port){
 	EventEmitter.call(this);
 	var m=this;
@@ -18,24 +26,11 @@ function Service(bind_port){
 
 	
 	var request_dict = {}
-	// this.setData = function(type, offset, size, payload, rinfo){
-	// 	var values;
-	// 	if (type==OPERANDS.OPERAND_STRING){
-	// 		str = payload.toString('ascii', 0);
-	// 		values = str.split("\0");
-	// 	}
-	// 	else{
-	// 		fmt = '<' + _repeat('H', size);
-	// 		values = jspack.Unpack(fmt, payload);
-	// 	}
-
-	// 	this.emit('set', type, offset, size, values, rinfo);
-	// };
-
+	
 	this._addReq = function(counter, callback){
 		var timeout = setTimeout(function(counter){
 			request_dict[counter].callback({counter:counter, message:"timeout"});
-			m.emit("request timeout", counter);
+			m.emit("timeout", counter);
 			delete request_dict[counter];
 		}, 1000, counter);
 		request_dict[counter]={counter:counter, timer:timeout, callback:callback };
@@ -43,11 +38,11 @@ function Service(bind_port){
 
 	this._gotRes = function(packet){
 		clearTimeout(request_dict[packet.header.COUNTER].timer);
+		//TODO:check if flags are RESPONSE or NO_ACK
 		var fn = request_dict[packet.header.COUNTER].callback;
 		if (typeof(fn)!='undefined'){
 			fn(null, packet);
 		}				
-
 		delete request_dict[packet.header.COUNTER]
 	}
 
@@ -61,11 +56,9 @@ function Service(bind_port){
 		if(is_response){
 			if(has_payload){
 				//can't be anything else but a response to a request for data
-				var offset = packet.header.REQ_OFFSET_CLIENT;
-				var operand = packet.payload_operand;
-				for(var index=0; index<packet.header.REQ_SIZE ;index++){
-					m.storage.set(operand, offset+index, packet.payload[index]);	
-				}
+				payloadToStorage(packet.payload, packet.payload_operand
+					, packet.header.REQ_OFFSET_CLIENT
+					, packet.header.REQ_SIZE);
 			}
 			m._gotRes(packet);
 		}
@@ -85,19 +78,23 @@ function Service(bind_port){
 			var l = res.packTo(buf, 0);
 
 			m.server.send(buf, 0, l, rinfo.port, rinfo.address);
-			m.emit('request', packet, res);
+			m.emit('request', packet, res, rinfo);
 		}
 		else{
 			if(! has_payload){
 				throw new Error('must have a payload');
 			}
+			payloadToStorage(packet.payload, packet.payload_operand
+					, packet.header.SEND_OFFSET
+					, packet.header.SEND_SIZE);
+
 			var res = packets.Packet.parse(msg);
 			res.setResponse(true);
 			res.payload=[];
 			var buf = new Buffer(20);
 			res.packTo(buf, 0);
 			m.server.send(buf, 0, 20, rinfo.port, rinfo.address);
-			m.emit("send", packet, res);
+			m.emit("send", packet, res, rinfo);
 		}
 	});
 
@@ -109,9 +106,17 @@ function Service(bind_port){
 	      address.address + ":" + address.port);
 	});
 
+	function payloadToStorage(payload, operand, offset, size){
+		for(var index=0; index<size ;index++){
+			m.storage.set(operand, offset+index, payload[index]);	
+		}
+	}
+
 	server.bind(bind_port);
 };
 
+
+//Service.prototype.__proto__ = EventEmitter.prototype;
 Service.super_ = EventEmitter;
 Service.prototype = Object.create(EventEmitter.prototype, {
 	constructor: {
@@ -120,15 +125,31 @@ Service.prototype = Object.create(EventEmitter.prototype, {
 	}
 });
 
+
+/**
+*	Returns bound address and port 
+*
+* @api public
+*/
 Service.prototype.address = function(){
 	return this.server.address();
 }
 
+
+/**
+* Generates next packet counter
+*/
 Service.prototype.getCounter = function(){
 	this.counter += 1;
 	return this.counter;
 }
 
+
+/*
+* Shortcut for the FLAGWORD storage array
+* 
+* @api public
+*/
 Service.prototype.__defineGetter__('flagwords', function(){
 	var data =  this.storage.areas[enums.OPERANDS.FLAGWORD];
 	if (typeof(data)=='undefined'){
@@ -138,6 +159,17 @@ Service.prototype.__defineGetter__('flagwords', function(){
 });
 
 
+/**
+* Request data from remote address and store in local storage
+* @param {Object} {address:<address>, port:<number>}
+* @param {Number} OPERANDS datatype to get from remote
+* @param {Number} Start address at remote
+* @param {Number} Number of values
+* @param {Number} Where to start store the requested data locally
+* @param {Function} Optional (err, response_packet) callback
+*
+* @api public
+*/
 Service.prototype.doRequest = function(address, operand, offset, size, local_offset, callback){
 	var m = this;
 	var h = new packets.Header();
@@ -148,7 +180,6 @@ Service.prototype.doRequest = function(address, operand, offset, size, local_off
 	h.REQ_OFFSET_CLIENT=local_offset;
 	var buf = new Buffer(20);
 	h.packTo(buf, 0);
-	//TODO:callback on send....
 	this.server.send(buf, 0, buf.length, address.port, address.address, function(err, sent){
 		if(err){
 			callback(err);
@@ -158,6 +189,18 @@ Service.prototype.doRequest = function(address, operand, offset, size, local_off
 	});
 }
 
+
+/**
+* Send data from local storage to remote address.
+* @param {Object} {address:<address>, port:<number>}
+* @param {Number} OPERANDS datatype to send from local storage
+* @param {Number} Start address at remote
+* @param {Number} Number of values
+* @param {Number} Where to start fetching data from local storage
+* @param {Function} Optional (err, response_packet) callback
+*
+* @api public
+*/
 Service.prototype.doSend = function(address, operand, offset, size, local_offset, callback){
 	var m = this;
 	var p = new packets.Packet();
@@ -185,9 +228,16 @@ Service.prototype.doSend = function(address, operand, offset, size, local_offset
 	});
 }
 
-
+/**
+* bind_port = 0 - gives a random port
+* undefined tries to use the EASYIP_PORT or < 1024 and if not run as root
+* you will get a 'bind EACCES' error.
+* @param {Number} Optional port number to bind to 
+*
+* @api public
+*/
 exports.createService = function(bind_port){
-	//if(typeof(bind_port)=='undefined') bind_port = EASYIP_PORT;
+	if(typeof(bind_port)=='undefined') bind_port = EASYIP_PORT;
 	return new Service(bind_port);
 };
 

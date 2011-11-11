@@ -1,3 +1,7 @@
+/*!
+ *  Copyright © 2011 Peter Magnusson.
+ *  All rights reserved.
+ */
 var vows = require('vows')
   , assert = require('assert');
 
@@ -21,7 +25,7 @@ vows.describe('Service').addBatch({
     },
     'createdService':{
       topic:function(mod){
-        return mod.createService();
+        return mod.createService(0);
       },
       'returns EventEmitter':function(obj){
         assert.instanceOf(obj, EventEmitter)
@@ -69,20 +73,21 @@ vows.describe('Service').addBatch({
           }, 1000);
           server.on('send', function(packet){
             clearTimeout(t);
-            self.callback(null, packet);
+            self.callback(null, packet, server);
           });
-          
-
         },
-        'have the packet':function(err, packet){
+        'have the packet':function(err, packet, server){
           assert.isNull(err);
           assert.isObject(packet);
         },
-        'have a payload':function(err, packet){
+        'have a payload':function(err, packet, server){
           assert.isNull(err);
           assert.includes(packet, 'payload');
           var p = packet.payload
           assert.equal(p.inspect, [10,11,12].inspect);
+        },
+        'was put in storage':function(err, packet, server){
+          assert.equal(server.flagwords.inspect, [10,11,12].inspect);          
         }
       }, //listen for send
       'do request':{
