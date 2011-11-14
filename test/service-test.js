@@ -25,19 +25,17 @@ vows.describe('Service').addBatch({
     },
     'createdService':{
       topic:function(mod){
-        return mod.createService(0);
+        var s = mod.createService(0);
+        return s
       },
       'returns EventEmitter':function(obj){
         assert.instanceOf(obj, EventEmitter)
       },
+      'has bind() function': function(obj){
+        assert.isFunction(obj.bind);
+      },
       'has address() function':function(obj){
         assert.isFunction(obj.address);
-        var a = obj.address();
-        assert.includes(a, 'address');
-        assert.includes(a, 'port');
-        assert.isNumber(a.port);
-        assert.isTrue(a.port>0);
-        assert.isTrue(a.port<65535);
       },
       'has doSend() function':function(obj){
         assert.isFunction(obj.doSend);
@@ -48,6 +46,7 @@ vows.describe('Service').addBatch({
       'listen for request': {
         topic:function(){
           var server = easyip.createService(1000 + easyip.EASYIP_PORT);
+          server.bind();
           server.flagwords[0]=10;
           server.flagwords[1]=11;
           server.flagwords[2]=12;          
@@ -67,6 +66,7 @@ vows.describe('Service').addBatch({
       'listen for send': {
         topic:function(){
           var server = easyip.createService(2000 + easyip.EASYIP_PORT);
+          server.bind(); 
           var self = this;
           var t = setTimeout(function(){
             self.callback('timeout', null)

@@ -21,32 +21,38 @@ function Service(bind_port){
 	var m=this;
 	this.storage = new Storage(); 
 	this.counter = 0;
+	this.bind_port = bind_port;
 	var server = dgram.createSocket("udp4");
 	m.server = server;
 
 	
-	var request_dict = {}
+	var request_dict = {};
 	
-	this._addReq = function(counter, callback){
+	this._addReq = function(counter, address, callback){
+		var msg = {message:'timeout', counter:counter, address:address};
 		var timeout = setTimeout(function(counter){
-			request_dict[counter].callback({counter:counter, message:"timeout"});
+			if(typeof(request_dict[counter].callback) !== 'undefined'){
+				request_dict[counter].callback(msg);
+			}
 			m.emit("timeout", counter);
+			m.emit("error", msg);
 			delete request_dict[counter];
 		}, 1000, counter);
-		request_dict[counter]={counter:counter, timer:timeout, callback:callback };
-	}
+		request_dict[counter]={counter:counter, timer:timeout, callback:callback, address:address };
+	};
 
 	this._gotRes = function(packet){
 		clearTimeout(request_dict[packet.header.COUNTER].timer);
 		//TODO:check if flags are RESPONSE or NO_ACK
 		var fn = request_dict[packet.header.COUNTER].callback;
-		if (typeof(fn)!='undefined'){
+		if (typeof(fn) !== 'undefined'){
 			fn(null, packet);
 		}				
-		delete request_dict[packet.header.COUNTER]
-	}
+		delete request_dict[packet.header.COUNTER];
+	};
 
 	server.on("message", function(msg, rinfo){
+		var index, res, buf;
 		var packet = packets.Packet.parse(msg);
 		var is_response = packet.isResponse();
 		var is_acknowleged=packet.isAck();
@@ -68,19 +74,20 @@ function Service(bind_port){
 			var operand = packet.header.REQ_TYPE;
 			var payload = [];
 			//get the payload from storage
-			for(var index=0; index < packet.header.REQ_SIZE; index++){
+			for(index=0; index < packet.header.REQ_SIZE; index++){
 				payload.push(m.storage.get(operand, offset+index));
 			}
-			var res = packets.Packet.parse(msg);
+			res = packets.Packet.parse(msg);
 			res.setResponse(true);
 			res.payload = payload;
-			var buf = new Buffer(80);
+			buf = new Buffer(80);
 			var l = res.packTo(buf, 0);
 
 			m.server.send(buf, 0, l, rinfo.port, rinfo.address);
 			m.emit('request', packet, res, rinfo);
 		}
 		else{
+			//someone sent some data
 			if(! has_payload){
 				throw new Error('must have a payload');
 			}
@@ -88,10 +95,10 @@ function Service(bind_port){
 					, packet.header.SEND_OFFSET
 					, packet.header.SEND_SIZE);
 
-			var res = packets.Packet.parse(msg);
+			res = packets.Packet.parse(msg);
 			res.setResponse(true);
 			res.payload=[];
-			var buf = new Buffer(20);
+			buf = new Buffer(20);
 			res.packTo(buf, 0);
 			m.server.send(buf, 0, 20, rinfo.port, rinfo.address);
 			m.emit("send", packet, res, rinfo);
@@ -102,18 +109,23 @@ function Service(bind_port){
 	server.on("listening", function () {
 	  var address = server.address();
 	  m.emit("listening", address);
-	  console.log("easyip service listening on " +
-	      address.address + ":" + address.port);
+	});
+
+	this.storage.on("changing", function(operand, index, from, to){
+		m.emit("changing", operand, index, from, to);
+	});
+
+	this.storage.on("changed", function(operand, index, from, to){
+		m.emit("changed", operand, index, from, to);
 	});
 
 	function payloadToStorage(payload, operand, offset, size){
-		for(var index=0; index<size ;index++){
+		var index;
+		for(index=0; index<size ;index++){
 			m.storage.set(operand, offset+index, payload[index]);	
 		}
 	}
-
-	server.bind(bind_port);
-};
+}
 
 
 //Service.prototype.__proto__ = EventEmitter.prototype;
@@ -125,6 +137,14 @@ Service.prototype = Object.create(EventEmitter.prototype, {
 	}
 });
 
+/**
+*	Binds the service to the previously defined port
+*
+* @api public
+*/
+Service.prototype.bind = function(){
+	this.server.bind(this.bind_port);
+};
 
 /**
 *	Returns bound address and port 
@@ -132,8 +152,9 @@ Service.prototype = Object.create(EventEmitter.prototype, {
 * @api public
 */
 Service.prototype.address = function(){
+	//if not bound then this throws an error
 	return this.server.address();
-}
+};
 
 
 /**
@@ -142,7 +163,7 @@ Service.prototype.address = function(){
 Service.prototype.getCounter = function(){
 	this.counter += 1;
 	return this.counter;
-}
+};
 
 
 /*
@@ -152,7 +173,7 @@ Service.prototype.getCounter = function(){
 */
 Service.prototype.__defineGetter__('flagwords', function(){
 	var data =  this.storage.areas[enums.OPERANDS.FLAGWORD];
-	if (typeof(data)=='undefined'){
+	if (typeof(data) === 'undefined'){
 		this.storage.areas[enums.OPERANDS.FLAGWORD]=[];
 	}
 	return this.storage.areas[enums.OPERANDS.FLAGWORD];
@@ -185,9 +206,9 @@ Service.prototype.doRequest = function(address, operand, offset, size, local_off
 			callback(err);
 			return;
 		} 
-		m._addReq(h.COUNTER, callback);	
+		m._addReq(h.COUNTER, address, callback);	
 	});
-}
+};
 
 
 /**
@@ -205,6 +226,7 @@ Service.prototype.doSend = function(address, operand, offset, size, local_offset
 	var m = this;
 	var p = new packets.Packet();
 	var h = p.header;
+	var index;
 	h.COUNTER=this.getCounter();
 	h.SEND_TYPE=operand;
 	h.SEND_SIZE=size;
@@ -212,7 +234,7 @@ Service.prototype.doSend = function(address, operand, offset, size, local_offset
 	//TODO:Fix the rest
 	var payload = [];
 	//get the payload from storage
-	for(var index=0; index < size; index++){
+	for(index=0; index < size; index++){
 		payload.push(m.storage.get(operand, local_offset+index));
 	}
 	p.payload=payload;
@@ -224,9 +246,9 @@ Service.prototype.doSend = function(address, operand, offset, size, local_offset
 			callback(err);
 			return;
 		}
-		m._addReq(h.COUNTER, callback);
+		m._addReq(h.COUNTER, address, callback);
 	});
-}
+};
 
 /**
 * bind_port = 0 - gives a random port
@@ -237,7 +259,7 @@ Service.prototype.doSend = function(address, operand, offset, size, local_offset
 * @api public
 */
 exports.createService = function(bind_port){
-	if(typeof(bind_port)=='undefined') bind_port = EASYIP_PORT;
+	if(typeof(bind_port)==='undefined'){ bind_port = EASYIP_PORT;}
 	return new Service(bind_port);
 };
 
