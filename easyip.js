@@ -17,12 +17,11 @@ var EASYIP_PORT=995;
 * @param {Number} port number to bind the service to
 *
 */
-function Service(bind_port){
+function Service(){
 	EventEmitter.call(this);
 	var m=this;
 	this.storage = new Storage(); 
 	this.counter = 0;
-	this.bind_port = bind_port;
 	var server = dgram.createSocket("udp4");
 	m.server = server;
 
@@ -48,7 +47,7 @@ function Service(bind_port){
 		//TODO:check if flags are RESPONSE or NO_ACK
 		var fn = request_dict[packet.header.COUNTER].callback;
 		if (typeof(fn) !== 'undefined'){
-			fn(null, packet);
+			fn(null, packet, rinfo);
 		}				
 		delete request_dict[packet.header.COUNTER];
 		m.emit("response", packet, rinfo);
@@ -137,12 +136,18 @@ function Service(bind_port){
 util.inherits(Service, EventEmitter);
 
 /**
-*	Binds the service to the previously defined port
+*	Binds the service to a defined or default port
+* if you don't run as root with the default port
+* you will get a 'bind EACCES' error.
+*
+* @param {Number} Optional port number to bind to. default=EASYIP_PORT, 0 - gives a random port
 *
 * @api public
 */
-Service.prototype.bind = function(){
-	this.server.bind(this.bind_port);
+Service.prototype.bind = function(bind_port){
+	if(typeof(bind_port)==='undefined'){ bind_port = EASYIP_PORT;}
+	this.bind_port = bind_port;
+	this.server.bind(bind_port);
 };
 
 /**
@@ -200,6 +205,7 @@ Service.prototype.doRequest = function(address, operand, offset, size, local_off
 	h.REQ_OFFSET_CLIENT=local_offset;
 	var buf = new Buffer(20);
 	h.packTo(buf, 0);
+
 	this.server.send(buf, 0, buf.length, address.port, address.address, function(err, sent){
 		if(err){
 			callback(err);
@@ -212,12 +218,14 @@ Service.prototype.doRequest = function(address, operand, offset, size, local_off
 
 /**
 * Send data from local storage to remote address.
-* @param {Object} {address:<address>, port:<number>}
+* @param {Object}/{String} {address:<address>, port:<number>} / 'ipaddress or hostname'
 * @param {Number} OPERANDS datatype to send from local storage
 * @param {Number} Start address at remote
 * @param {Number} Number of values
 * @param {Number} Where to start fetching data from local storage
 * @param {Function} Optional (err, response_packet) callback
+*
+* @callback (err, packet, rinfo)
 *
 * @api public
 */
@@ -226,6 +234,9 @@ Service.prototype.doSend = function(address, operand, offset, size, local_offset
 	var p = new packets.Packet();
 	var h = p.header;
 	var index;
+	if(typeof(address)=='string'){
+		address = {address:address, port:EASYIP_PORT};
+	}
 	h.COUNTER=this.getCounter();
 	h.SEND_TYPE=operand;
 	h.SEND_SIZE=size;
@@ -239,6 +250,7 @@ Service.prototype.doSend = function(address, operand, offset, size, local_offset
 	p.payload=payload;
 	var buf = new Buffer(20+3*size);
 	var l = p.packTo(buf, 0);
+
 	this.server.send(buf, 0, l, address.port, address.address, function(err, sent){
 		if(err){
 			callback(err);
@@ -248,19 +260,8 @@ Service.prototype.doSend = function(address, operand, offset, size, local_offset
 	});
 };
 
-/**
-* bind_port = 0 - gives a random port
-* undefined tries to use the EASYIP_PORT or < 1024 and if not run as root
-* you will get a 'bind EACCES' error.
-* @param {Number} Optional port number to bind to 
-*
-* @api public
-*/
-exports.createService = function(bind_port){
-	if(typeof(bind_port)==='undefined'){ bind_port = EASYIP_PORT;}
-	return new Service(bind_port);
-};
-
+exports.VERSION='0.2.0';
+exports.Service = Service;
 exports.OPERANDS = enums.OPERANDS;
 exports.FLAGS = enums.FLAGS;
 exports.EASYIP_PORT = EASYIP_PORT;

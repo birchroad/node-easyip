@@ -17,15 +17,15 @@ vows.describe('Service').addBatch({
       assert.isObject(mod);
       assert.includes(mod, 'EASYIP_PORT');
     },
-    'has createService function':function(mod){
-      assert.isFunction(mod.createService);
+    'has Service constructor':function(mod){
+      assert.isFunction(mod.Service);
     },
     'has OPERANDS': function(mod){
       assert.includes(mod, 'OPERANDS');
     },
     'createdService':{
       topic:function(mod){
-        var s = mod.createService(0);
+        var s = new mod.Service();
         return s
       },
       'returns EventEmitter':function(obj){
@@ -45,8 +45,8 @@ vows.describe('Service').addBatch({
       },
       'listen for request': {
         topic:function(){
-          var server = easyip.createService(1000 + easyip.EASYIP_PORT);
-          server.bind();
+          var server = new easyip.Service();
+          server.bind(1000 + easyip.EASYIP_PORT);
           server.flagwords[0]=10;
           server.flagwords[1]=11;
           server.flagwords[2]=12;          
@@ -65,8 +65,8 @@ vows.describe('Service').addBatch({
       }, //listen for request
       'listen for send': {
         topic:function(){
-          var server = easyip.createService(2000 + easyip.EASYIP_PORT);
-          server.bind(); 
+          var server = new easyip.Service();
+          server.bind(2000 + easyip.EASYIP_PORT); 
           var self = this;
           var t = setTimeout(function(){
             self.callback('timeout', null)

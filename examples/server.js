@@ -2,14 +2,18 @@
  *  Copyright © 2011 Peter Magnusson.
  *  All rights reserved.
  */
-var easy = require('./easyip.js');
+var easy = require('../easyip.js');
 
-var service = easy.createService(1024+easy.EASYIP_PORT);
+var service = new easy.Service();
 
 service.on('listening', function(address){
   console.log("easyip service listening on " +
       address.address + ":" + address.port);
 });
+
+service.on("message", function(){
+  console.log("message");
+})
 
 service.on('send', function(req, res, rinfo){
 	console.log("send:", req.payload, res.header.FLAGS, rinfo);
