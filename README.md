@@ -12,6 +12,22 @@ node-easyip is not available as a npm module yet. You have to check out the sour
 ### Dependencies
  [node-jspack](http://github.com/birchroad/node-jspack)
 
+
+## API
+
+### Emits
+* timeout
+* error
+* send
+* listening
+* changing
+* changed
+* request - packet, res, rinfo
+* send - packet, res, rinfo
+* response - packet, rinfo
+* addReq - {Object}
+
+
 ## License 
 
 (The MIT License)

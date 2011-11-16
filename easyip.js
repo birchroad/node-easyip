@@ -6,7 +6,8 @@ var dgram = require('dgram')
 	, EventEmitter = require('events').EventEmitter
 	, packets = require('./lib/packet')
 	, Storage = require('./lib/storage').Storage
-	, enums = require('./lib/enums');
+	, enums = require('./lib/enums')
+	, util = require('util');
 
 var EASYIP_PORT=995;
 
@@ -39,9 +40,10 @@ function Service(bind_port){
 			delete request_dict[counter];
 		}, 1000, counter);
 		request_dict[counter]={counter:counter, timer:timeout, callback:callback, address:address };
+		this.emit('addReq', msg);
 	};
 
-	this._gotRes = function(packet){
+	this._gotRes = function(packet, rinfo){
 		clearTimeout(request_dict[packet.header.COUNTER].timer);
 		//TODO:check if flags are RESPONSE or NO_ACK
 		var fn = request_dict[packet.header.COUNTER].callback;
@@ -49,11 +51,13 @@ function Service(bind_port){
 			fn(null, packet);
 		}				
 		delete request_dict[packet.header.COUNTER];
+		m.emit("response", packet, rinfo);
 	};
 
 	server.on("message", function(msg, rinfo){
 		var index, res, buf;
 		var packet = packets.Packet.parse(msg);
+		m.emit("message", packet, rinfo);
 		var is_response = packet.isResponse();
 		var is_acknowleged=packet.isAck();
 		var is_request = packet.isRequest();
@@ -66,7 +70,7 @@ function Service(bind_port){
 					, packet.header.REQ_OFFSET_CLIENT
 					, packet.header.REQ_SIZE);
 			}
-			m._gotRes(packet);
+			m._gotRes(packet, rinfo);
 		}
 		else if (is_request){
 			//it's a request for something
@@ -127,15 +131,10 @@ function Service(bind_port){
 	}
 }
 
-
-//Service.prototype.__proto__ = EventEmitter.prototype;
-Service.super_ = EventEmitter;
-Service.prototype = Object.create(EventEmitter.prototype, {
-	constructor: {
-		value: Service,
-		enumerable: false
-	}
-});
+/**
+* Inherit from EventEmitter
+*/
+util.inherits(Service, EventEmitter);
 
 /**
 *	Binds the service to the previously defined port
@@ -238,7 +237,6 @@ Service.prototype.doSend = function(address, operand, offset, size, local_offset
 		payload.push(m.storage.get(operand, local_offset+index));
 	}
 	p.payload=payload;
-
 	var buf = new Buffer(20+3*size);
 	var l = p.packTo(buf, 0);
 	this.server.send(buf, 0, l, address.port, address.address, function(err, sent){
