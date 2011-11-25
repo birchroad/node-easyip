@@ -6,7 +6,8 @@ var vows = require('vows')
   , assert = require('assert');
 
 var EventEmitter = require('events').EventEmitter
-var easyip = require('../easyip');
+  ,easyip = require('../easyip')
+  ,util = require('util');
 
 vows.describe('Service').addBatch({
   'module':{
@@ -23,7 +24,7 @@ vows.describe('Service').addBatch({
     'has OPERANDS': function(mod){
       assert.includes(mod, 'OPERANDS');
     },
-    'createdService':{
+    'new Service instance':{
       topic:function(mod){
         var s = new mod.Service();
         return s
@@ -46,21 +47,25 @@ vows.describe('Service').addBatch({
       'listen for request': {
         topic:function(){
           var server = new easyip.Service();
+          var f0 = server.createField('FW0');
+          var f1 = server.createField('FW1');
+          var f2 = server.createField('FW2');
+          f0.value=10;
+          f1.value=11;
+          f2.value=12;
           server.bind(1000 + easyip.EASYIP_PORT);
-          server.flagwords[0]=10;
-          server.flagwords[1]=11;
-          server.flagwords[2]=12;          
+                    
           var self = this;
-          server.on('request', function(req, res){
-            self.callback(null, req, res);
+          server.on('request', function(req, res, rinfo){
+            self.callback(null, req, res, rinfo);
           });
         },
-        'have the request':function(err, req, res){
+        'have the request':function(err, req, res, rinfo){
           assert.isObject(req);
         },
-        'have the response':function(err, req, res){  
+        'have the response':function(err, req, res, rinfo){  
           assert.isObject(res);
-          assert.equal(res.payload.inspect, [10,11,12].inspect);
+          assert.equal(util.inspect(res.payload), util.inspect([10,11,12]));
         },
       }, //listen for request
       'listen for send': {
@@ -84,10 +89,11 @@ vows.describe('Service').addBatch({
           assert.isNull(err);
           assert.includes(packet, 'payload');
           var p = packet.payload
-          assert.equal(p.inspect, [10,11,12].inspect);
+          assert.equal(util.inspect(p), util.inspect([10,11,12]));
         },
         'was put in storage':function(err, packet, server){
-          assert.equal(server.flagwords.inspect, [10,11,12].inspect);          
+          assert.equal(util.inspect(server.storage.areas[easyip.OPERANDS.FLAGWORD]), util.inspect({'0':10, '1':11, '2':12}));   
+          
         }
       }, //listen for send
       'do request':{
@@ -109,12 +115,21 @@ vows.describe('Service').addBatch({
         }
       }, //do request
       'do send':{
-        topic:function(obj){
+        topic:function(){
+          var server = new easyip.Service();
+          var f0 = server.createField('FW0');
+          var f1 = server.createField('FW1');
+          var f2 = server.createField('FW2');
+          f0.value=10;
+          f1.value=11;
+          f2.value=12;
+          server.bind(0);
+
           var self = this;
           var t = setTimeout(function(){
             self.callback('timeout', null);
           }, 1000);
-          obj.doSend({address:'127.0.0.1', port:2000 + easyip.EASYIP_PORT}
+          server.doSend({address:'127.0.0.1', port:2000 + easyip.EASYIP_PORT}
             , easyip.OPERANDS.FLAGWORD
             , 0 //offset
             , 3 //size

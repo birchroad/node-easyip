@@ -7,7 +7,8 @@ var dgram = require('dgram')
 	, packets = require('./lib/packet')
 	, Storage = require('./lib/storage').Storage
 	, enums = require('./lib/enums')
-	, util = require('util');
+	, util = require('util')
+	, EasyField = require('./lib/field');
 
 var EASYIP_PORT=995;
 
@@ -92,7 +93,8 @@ function Service(){
 		else{
 			//someone sent some data
 			if(! has_payload){
-				throw new Error('must have a payload');
+				m.emit("error", {message:'received a send request without payload', packet:packet});
+				return;
 			}
 			payloadToStorage(packet.payload, packet.payload_operand
 					, packet.header.SEND_OFFSET
@@ -171,17 +173,13 @@ Service.prototype.getCounter = function(){
 
 
 /*
-* Shortcut for the FLAGWORD storage array
+* Shortcut for creating a EasyField
 * 
 * @api public
 */
-Service.prototype.__defineGetter__('flagwords', function(){
-	var data =  this.storage.areas[enums.OPERANDS.FLAGWORD];
-	if (typeof(data) === 'undefined'){
-		this.storage.areas[enums.OPERANDS.FLAGWORD]=[];
-	}
-	return this.storage.areas[enums.OPERANDS.FLAGWORD];
-});
+Service.prototype.createField = function(op){
+		return new EasyField(op, this.storage);
+};
 
 
 /**
