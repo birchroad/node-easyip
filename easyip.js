@@ -8,7 +8,7 @@ var dgram = require('dgram')
 	, Storage = require('./lib/storage').Storage
 	, enums = require('./lib/enums')
 	, util = require('util')
-	, EasyField = require('./lib/field');
+	, EasyField = require('./lib/easyfield');
 
 var EASYIP_PORT=995;
 
@@ -177,8 +177,13 @@ Service.prototype.getCounter = function(){
 * 
 * @api public
 */
-Service.prototype.createField = function(op){
-		return new EasyField(op, this.storage);
+Service.prototype.createField = function(op, setToActive){
+	var activate = typeof(setToActive)!='undefined' ? setToActive : false;
+	var f = new EasyField(op, this.storage);
+	if(activate){
+		f.setActive();
+	}
+	return f;
 };
 
 
@@ -258,7 +263,7 @@ Service.prototype.doSend = function(address, operand, offset, size, local_offset
 	});
 };
 
-exports.VERSION='0.2.0';
+exports.VERSION='0.2.3';
 exports.Service = Service;
 exports.OPERANDS = enums.OPERANDS;
 exports.FLAGS = enums.FLAGS;
