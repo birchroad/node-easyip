@@ -11,6 +11,7 @@ var dgram = require('dgram')
 	, EasyField = require('./lib/easyfield');
 
 var EASYIP_PORT=995;
+var RESPONSE_TIMEOUT=200;
 
 function isEmpty(dict) {
     for (var prop in dict) if (dict.hasOwnProperty(prop)) return false;
@@ -41,8 +42,8 @@ function Service(){
 			m.emit("timeout", counter);
 			m.emit("error", msg);
 			delete request_dict[counter];
-			process.nextTick(m._sendQueue());
-		}, 1000, counter);
+			m._sendQueue();
+		}, RESPONSE_TIMEOUT, counter);
 		request_dict[counter]={counter:counter, timer:timeout, callback:callback, address:address };
 		this.emit('addReq', msg);
 	};
@@ -56,29 +57,29 @@ function Service(){
 		}				
 		delete request_dict[packet.header.COUNTER];
 		m.emit("response", packet, rinfo);
-		process.nextTick(m._sendQueue);
+		m._sendQueue();
 	};
 
 	this._addQueue = function(address, packet, callback){
 		sendQueue.push({address:address, packet:packet, callback:callback});
-		process.nextTick(m._sendQueue);
+		m._sendQueue();
 	}//_addQueue
 
 	this._sendQueue = function(){
-		if ( sendQueue.length >0 && isEmpty(request_dict) ){
-			process.nextTick(function(){
+		process.nextTick(function(){
+			if ( sendQueue.length >0 && isEmpty(request_dict) ){
 				var q = sendQueue.shift();
 				var buf = new Buffer(20+3*q.packet.header.SEND_SIZE);
 				var l = q.packet.packTo(buf, 0);
+				m._addReq(q.packet.header.COUNTER, q.address, q.callback);
 				m.server.send(buf, 0, l, q.address.port, q.address.address, function(err, sent){
 					if(err){
 						q.callback(err);
 						return;
 					}
-					m._addReq(q.packet.header.COUNTER, q.address, q.callback);
 				});
-			});;
-		}
+			}
+		});
 	}//_sendQueue
 
 	server.on("message", function(msg, rinfo){
@@ -230,22 +231,14 @@ Service.prototype.createField = function(op, setToActive){
 */
 Service.prototype.doRequest = function(address, operand, offset, size, local_offset, callback){
 	var m = this;
-	var h = new packets.Header();
+	var p = new packets.Packet();
+	var h = p.header;
 	h.COUNTER = this.getCounter();
 	h.REQ_TYPE=operand;
 	h.REQ_SIZE=size;
 	h.REQ_OFFSET_SERVER=offset;
 	h.REQ_OFFSET_CLIENT=local_offset;
-	var buf = new Buffer(20);
-	h.packTo(buf, 0);
-
-	this.server.send(buf, 0, buf.length, address.port, address.address, function(err, sent){
-		if(err){
-			callback(err);
-			return;
-		} 
-		m._addReq(h.COUNTER, address, callback);	
-	});
+	this._addQueue(address, p, callback);
 };
 
 
@@ -281,8 +274,6 @@ Service.prototype.doSend = function(address, operand, offset, size, local_offset
 		payload.push(m.storage.get(operand, local_offset+index));
 	}
 	p.payload=payload;
-	var buf = new Buffer(20+3*size);
-	var l = p.packTo(buf, 0);
 	this._addQueue(address, p, callback);
 };
 
@@ -293,3 +284,4 @@ exports.Service = Service;
 exports.OPERANDS = enums.OPERANDS;
 exports.FLAGS = enums.FLAGS;
 exports.EASYIP_PORT = EASYIP_PORT;
+exports.RESPONSE_TIMEOUT = RESPONSE_TIMEOUT;
