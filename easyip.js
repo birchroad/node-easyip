@@ -93,7 +93,7 @@ function Service(){
 		else{
 			//someone sent some data
 			if(! has_payload){
-				m.emit("error", {message:'received a send request without payload', packet:packet});
+				m.emit("error", {message:'received a send request without payload', msg:msg, msg_length:msg.length, packet:packet});
 				return;
 			}
 			payloadToStorage(packet.payload, packet.payload_operand
@@ -168,6 +168,9 @@ Service.prototype.address = function(){
 */
 Service.prototype.getCounter = function(){
 	this.counter += 1;
+	if (this.counter > 65535){
+		this.counter = 1;
+	}
 	return this.counter;
 };
 
