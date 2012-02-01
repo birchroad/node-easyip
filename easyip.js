@@ -12,6 +12,10 @@ var dgram = require('dgram')
 
 var EASYIP_PORT=995;
 
+function isEmpty(dict) {
+    for (var prop in dict) if (dict.hasOwnProperty(prop)) return false;
+    return true;
+};
 
 /**
 * The service constructor
@@ -25,8 +29,7 @@ function Service(){
 	this.counter = 0;
 	var server = dgram.createSocket("udp4");
 	m.server = server;
-
-	
+	var sendQueue = [];
 	var request_dict = {};
 	
 	this._addReq = function(counter, address, callback){
@@ -38,6 +41,7 @@ function Service(){
 			m.emit("timeout", counter);
 			m.emit("error", msg);
 			delete request_dict[counter];
+			process.nextTick(m._sendQueue());
 		}, 1000, counter);
 		request_dict[counter]={counter:counter, timer:timeout, callback:callback, address:address };
 		this.emit('addReq', msg);
@@ -52,7 +56,30 @@ function Service(){
 		}				
 		delete request_dict[packet.header.COUNTER];
 		m.emit("response", packet, rinfo);
+		process.nextTick(m._sendQueue);
 	};
+
+	this._addQueue = function(address, packet, callback){
+		sendQueue.push({address:address, packet:packet, callback:callback});
+		process.nextTick(m._sendQueue);
+	}//_addQueue
+
+	this._sendQueue = function(){
+		if ( sendQueue.length >0 && isEmpty(request_dict) ){
+			process.nextTick(function(){
+				var q = sendQueue.shift();
+				var buf = new Buffer(20+3*q.packet.header.SEND_SIZE);
+				var l = q.packet.packTo(buf, 0);
+				m.server.send(buf, 0, l, q.address.port, q.address.address, function(err, sent){
+					if(err){
+						q.callback(err);
+						return;
+					}
+					m._addReq(q.packet.header.COUNTER, q.address, q.callback);
+				});
+			});;
+		}
+	}//_sendQueue
 
 	server.on("message", function(msg, rinfo){
 		var index, res, buf;
@@ -256,15 +283,10 @@ Service.prototype.doSend = function(address, operand, offset, size, local_offset
 	p.payload=payload;
 	var buf = new Buffer(20+3*size);
 	var l = p.packTo(buf, 0);
-
-	this.server.send(buf, 0, l, address.port, address.address, function(err, sent){
-		if(err){
-			callback(err);
-			return;
-		}
-		m._addReq(h.COUNTER, address, callback);
-	});
+	this._addQueue(address, p, callback);
 };
+
+
 
 exports.VERSION='0.2.3';
 exports.Service = Service;

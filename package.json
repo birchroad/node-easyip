@@ -15,4 +15,11 @@
   "dependencies": {
     "jspack": ">=0.0.1"
   }
+  , "devDependencies": {
+      "vows": ">= 0.0.1"
+  }
+  , "scripts": {
+      "test": "./node_modules/.bin/vows"
+  }
+  
 }
