@@ -99,19 +99,26 @@ vows.describe('Service').addBatch({
       'do request':{
         topic:function(obj){
           var self = this;
+          cb = this.callback;
+
+          obj.storage.setMask(easyip.OPERANDS.FLAGWORD, 1, 65534);
           obj.doRequest({address:'127.0.0.1', port:1000 + easyip.EASYIP_PORT}
             , easyip.OPERANDS.FLAGWORD
             , 0 //offset
             , 3 //size
             , 0 //local offset
-            , this.callback
+            , function(err, packet){ cb(err,packet,obj); }
           );
         },
-        'does not have err':function(err, packet){
+        'does not have err':function(err, packet, service){
           assert.isNull(err);
         },
-        'have a packet':function(err, packet){
+        'have a packet':function(err, packet, service){
           assert.isObject(packet);
+        },
+        'retreived content match':function(err,packet, service){
+            //1 should be masked from 11 to 10
+            assert.equal(util.inspect(service.storage.areas), util.inspect({ '1': { '0': 10, '1': 10, '2': 12 } }));
         }
       }, //do request
       'do send':{

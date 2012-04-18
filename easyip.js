@@ -49,15 +49,29 @@ function Service(){
 	};
 
 	this._gotRes = function(packet, rinfo){
-		clearTimeout(request_dict[packet.header.COUNTER].timer);
-		//TODO:check if flags are RESPONSE or NO_ACK
-		var fn = request_dict[packet.header.COUNTER].callback;
-		if (typeof(fn) !== 'undefined'){
-			fn(null, packet, rinfo);
-		}				
-		delete request_dict[packet.header.COUNTER];
-		m.emit("response", packet, rinfo);
-		m._sendQueue();
+		try{
+			clearTimeout(request_dict[packet.header.COUNTER].timer);
+			//TODO:check if flags are RESPONSE or NO_ACK
+			if(packet.isResponse() && packet.hasPayload()){
+				//can't be anything else but a response to a request for data
+				payloadToStorage(packet.payload, packet.payload_operand
+					, packet.header.REQ_OFFSET_CLIENT
+					, packet.header.REQ_SIZE);
+			}
+			var fn = request_dict[packet.header.COUNTER].callback;
+			if (typeof(fn) !== 'undefined'){
+				fn(null, packet, rinfo);
+			}				
+			delete request_dict[packet.header.COUNTER];
+			m.emit("response", packet, rinfo);
+			m._sendQueue();
+		}
+		catch(err){
+			//can not clear timer... this is some sort of error.
+			m.emit("error", {message:'Error occured when taking care of the response', err:err, packet:packet});
+		}	
+
+		
 	};
 
 	this._addQueue = function(address, packet, callback){
@@ -89,15 +103,10 @@ function Service(){
 		var is_response = packet.isResponse();
 		var is_acknowleged=packet.isAck();
 		var is_request = packet.isRequest();
-		var has_payload = msg.length > 20; //anything more then a header is payload
+		var has_payload = packet.hasPayload(); //anything more then a header is payload
 		//can not be a send and response packet at the same time but both can carry a payload
 		if(is_response){
-			if(has_payload){
-				//can't be anything else but a response to a request for data
-				payloadToStorage(packet.payload, packet.payload_operand
-					, packet.header.REQ_OFFSET_CLIENT
-					, packet.header.REQ_SIZE);
-			}
+			//check the request queue for a match
 			m._gotRes(packet, rinfo);
 		}
 		else if (is_request){
@@ -278,8 +287,7 @@ Service.prototype.doSend = function(address, operand, offset, size, local_offset
 };
 
 
-
-exports.VERSION='0.2.3';
+exports.VERSION='2.0.6';
 exports.Service = Service;
 exports.OPERANDS = enums.OPERANDS;
 exports.FLAGS = enums.FLAGS;

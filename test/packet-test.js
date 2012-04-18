@@ -81,6 +81,7 @@ vows.describe('packet').addBatch({
 				assert.isFunction(packet.isResponse);
 				assert.isFunction(packet.isAck);
 				assert.isFunction(packet.isRequest);
+				assert.isFunction(packet.hasPayload);
 				//statics
 				assert.isFunction(mod.Packet.parse);	
 			},
@@ -114,6 +115,9 @@ vows.describe('packet').addBatch({
 				assert.isObject(packet);
 				assert.equal(packet.payload.length, 1);
 				assert.equal(packet.payload[0], 255);
+			},
+			'hasPayload()':function(packet){
+				assert.isTrue(packet.hasPayload());
 			}
 		},
 		'packet.packTo':{
