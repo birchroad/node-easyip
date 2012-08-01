@@ -2,7 +2,7 @@
   "author": "Peter Magnusson <kmpm@birchroad.net>",
   "name": "easyip",
   "description": "Node library for the Fest Easy-IP protocoll",
-  "version": "2.0.6",
+  "version": "2.0.7",
   "homepage": "http://github.com/birchroad/node-easyip",
   "repository": {
     "type": "git",
