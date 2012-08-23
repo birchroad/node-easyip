@@ -1,3 +1,4 @@
+[![build status](https://secure.travis-ci.org/birchroad/node-easyip.png)](http://travis-ci.org/birchroad/node-easyip)
 Node.js library for Festo Easy-IP protocol
 ==============================================
 
