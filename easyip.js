@@ -75,6 +75,7 @@ function Service(){
 	};
 
 	this._addQueue = function(address, packet, callback){
+		if(typeof(address)!='object') address={address:address, port:EASYIP_PORT};
 		sendQueue.push({address:address, packet:packet, callback:callback});
 		m._sendQueue();
 	}//_addQueue
@@ -151,6 +152,10 @@ function Service(){
 	server.on("listening", function () {
 	  var address = server.address();
 	  m.emit("listening", address);
+	});
+
+	server.on("close", function(){
+		m.emit("close");
 	});
 
 	this.storage.on("changing", function(operand, index, from, to){
