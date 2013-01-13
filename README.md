@@ -3,10 +3,11 @@ Node.js library for Festo Easy-IP protocol
 
 
 ## Disclaimer
-This library is certanly not stable even though the protocol itself is
+It is used in production but not yet documented as much as I would like to.
 
 ## Installation
-node-easyip is not available as a npm module yet. You have to check out the source.
+
+    npm install easyip
 
 
 ### Dependencies
@@ -32,7 +33,7 @@ node-easyip is not available as a npm module yet. You have to check out the sour
 
 (The MIT License)
 
-Copyright (c) 2011 Peter Magnusson &lt;kmpm@birchroad.net&gt;
+Copyright (c) 2011-2013 Peter Magnusson &lt;kmpm@birchroad.net&gt;
 
 Permission is hereby granted, free of charge, to any person obtaining
 a copy of this software and associated documentation files (the
