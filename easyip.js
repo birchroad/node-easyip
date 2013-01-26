@@ -112,7 +112,7 @@ function Service(){
 		}
 		else if (is_request){
 			//it's a request for something
-			var offset = packet.header.REQ_OFFSET_CLIENT;
+			var offset = packet.header.REQ_OFFSET_SERVER;
 			var operand = packet.header.REQ_TYPE;
 			var payload = [];
 			//get the payload from storage
