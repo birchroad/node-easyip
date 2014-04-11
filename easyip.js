@@ -1,5 +1,5 @@
 /*!
- *  Copyright © 2011 Peter Magnusson.
+ *  Copyright © 2011-2013 Peter Magnusson.
  *  All rights reserved.
  */
 var dgram = require('dgram')
@@ -55,7 +55,7 @@ function Service(){
 			if(packet.isResponse() && packet.hasPayload()){
 				//can't be anything else but a response to a request for data
 				payloadToStorage(packet.payload, packet.payload_operand
-					, packet.header.REQ_OFFSET_CLIENT
+					, packet.header.REQ_OFFSET_SERVER
 					, packet.header.REQ_SIZE);
 			}
 			var fn = request_dict[packet.header.COUNTER].callback;
@@ -112,7 +112,7 @@ function Service(){
 		}
 		else if (is_request){
 			//it's a request for something
-			var offset = packet.header.REQ_OFFSET_CLIENT;
+			var offset = packet.header.REQ_OFFSET_SERVER;
 			var operand = packet.header.REQ_TYPE;
 			var payload = [];
 			//get the payload from storage
