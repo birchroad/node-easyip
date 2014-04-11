@@ -7,6 +7,9 @@ var word_payload = new Buffer([255,0]);
 var target_header = new Buffer([enums.FLAGS.RESPONSE, 2, 3, 0, 4, 0, 5, 6, 7, 0, 8, 0, 9, enums.OPERANDS.FLAGWORD, word_payload.length/2, 0, 12, 0, 13, 00]);
 var target_header_array = [enums.FLAGS.RESPONSE,2,3,4,5,6,7,8,9,enums.OPERANDS.FLAGWORD,word_payload.length/2,12,13];
 
+var string_message_packet = new Buffer('000001000000000b0100000000000000000000007c534d537c34367c666f6f00', 'hex');
+
+
 
 vows.describe('packet').addBatch({
 	'packet module':{
@@ -119,6 +122,17 @@ vows.describe('packet').addBatch({
 			'hasPayload()':function(packet){
 				assert.isTrue(packet.hasPayload());
 			}
+		},
+		'parse string Packet': {
+			topic: function (mod) {
+				return mod.Packet.parse(string_message_packet);
+			},
+			'string payload': function (packet) {
+				assert.isObject(packet);
+				assert.equal(packet.payload.length, 1);
+				assert.isTrue(packet.hasPayload());
+			}
+
 		},
 		'packet.packTo':{
 			topic:function(mod){
