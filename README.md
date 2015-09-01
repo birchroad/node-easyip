@@ -10,11 +10,8 @@ It is used in production but not yet documented as much as I would like to.
     npm install easyip
 
 
-### Dependencies
- [node-jspack](http://github.com/birchroad/node-jspack)
-
-
 ## API
+(see examples)
 
 ### Emits
 * timeout
@@ -33,7 +30,7 @@ It is used in production but not yet documented as much as I would like to.
 
 (The MIT License)
 
-Copyright (c) 2011-2013 Peter Magnusson &lt;kmpm@birchroad.net&gt;
+Copyright (c) 2011-2015 Peter Magnusson &lt;kmpm@birchroad.net&gt;
 
 Permission is hereby granted, free of charge, to any person obtaining
 a copy of this software and associated documentation files (the
