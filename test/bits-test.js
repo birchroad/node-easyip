@@ -1,46 +1,43 @@
-var vows = require('vows')
-	, assert = require('assert');
+var expect = require('chai').expect;
 
+var bits = require('../lib/bits');
 
-vows.describe('bits').addBatch({
-	'bits':{
-		topic:function(){
-			return require('../lib/bits');
-		},
-		'has 3 methods':function(mod){
-			assert.isObject(mod);
-			assert.includes(mod, 'checkBit');
-			assert.isFunction(mod.checkBit);
-			assert.isFunction(mod.setBit);
-			assert.isFunction(mod.clearBit);
-		},
-		'0->1':function(mod){
-			assert.equal(mod.setBit(1,7), 129);
-		},
-		'1->0':function(mod){
-			assert.equal(mod.clearBit(129,0), 128);
-		},
-		'can check a 1 bit':function(mod){
-			assert.equal(mod.checkBit(129,0), 1);
-		},
-		'can check a 0 bit':function(mod){
-			assert.equal(mod.checkBit(129,2), 0);
-		},
-		'test bit 14 from':function(mod){
-			var val = 16384;
-			assert.equal(val.toString(2), '100000000000000');
-			assert.equal(mod.checkBit(val, 13), 0);
-			assert.equal(mod.checkBit(val, 14), 1);
-			
-		},
-		'set and check bit':function(mod){
-			var val = mod.setBit(0, 14);
-			assert.equal(val, 16384);
-			assert.equal(val.toString(2), '100000000000000');
-			assert.isNumber(val);
-			assert.equal(mod.checkBit(val, 14), 1);
-		}
-	}
+describe('lib/bits', function () {
+  it('has 3 methods', function () {
+    expect(bits).to.include.keys('checkBit', 'setBit', 'clearBit');
+    expect(bits.checkBit).to.be.a('function');
+    expect(bits.setBit).to.be.a('function');
+    expect(bits.clearBit).to.be.a('function');
+  });
 
-	
-}).export(module);
+  it('setBit 0->1', function () {
+    expect(bits.setBit(1, 7)).to.equal(129);
+  });
+
+  it('clearBit 1->0', function () {
+    expect(bits.clearBit(129, 0)).to.equal(128);
+  });
+
+  it('can check a 1 bit', function () {
+    expect(bits.checkBit(129, 0)).to.equal(1);
+  });
+
+  it('can check a 0 bit', function () {
+    expect(bits.checkBit(129,2)).to.equal(0);
+  });
+  it('test bit 14 from', function () {
+    var val = 16384;
+    expect(val.toString(2), '100000000000000');
+    expect(bits.checkBit(val, 13)).to.equal(0);
+    expect(bits.checkBit(val, 14)).to.equal(1);
+  });
+
+  it('set and check bit', function () {
+    var val = bits.setBit(0, 14);
+    expect(val).to.equal(16384);
+    expect(val.toString(2), '100000000000000');
+    expect(val).to.be.a('number');
+    expect(bits.checkBit(val, 14), 1);
+  });
+
+});

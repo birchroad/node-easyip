@@ -2,161 +2,73 @@
  *  Copyright © 2011 Peter Magnusson.
  *  All rights reserved.
  */
-var vows = require('vows')
-  , assert = require('assert');
+// var vows = require('vows')
+//   , assert = require('assert');
+
+var expect = require('chai').expect;
 
 var EventEmitter = require('events').EventEmitter
-  ,easyip = require('../easyip')
-  ,util = require('util');
+  ,easyip = require('../');
 
-vows.describe('Service').addBatch({
-  'module':{
-    topic:function(){
-      return require('../easyip');
-    },
-    'has EASYIP_PORT':function(mod){
-      assert.isObject(mod);
-      assert.includes(mod, 'EASYIP_PORT');
-    },
-    'has Service constructor':function(mod){
-      assert.isFunction(mod.Service);
-    },
-    'has OPERANDS': function(mod){
-      assert.includes(mod, 'OPERANDS');
-    },
-    'new Service instance':{
-      topic:function(mod){
-        var s = new mod.Service();
-        return s
-      },
-      'returns EventEmitter':function(obj){
-        assert.instanceOf(obj, EventEmitter)
-      },
-      'has bind() function': function(obj){
-        assert.isFunction(obj.bind);
-      },
-      'has address() function':function(obj){
-        assert.isFunction(obj.address);
-      },
-      'has doSend() function':function(obj){
-        assert.isFunction(obj.doSend);
-      },
-      'has doRequest() function':function(obj){
-        assert.isFunction(obj.doRequest);
-      },
-      'listen for request': {
-        topic:function(){
-          var server = new easyip.Service();
-          var f0 = server.createField('FW0');
-          var f1 = server.createField('FW1');
-          var f2 = server.createField('FW2');
-          f0.value=10;
-          f1.value=11;
-          f2.value=12;
-          server.bind(1000 + easyip.EASYIP_PORT);
-                    
-          var self = this;
-          server.on('request', function(req, res, rinfo){
-            self.callback(null, req, res, rinfo);
-          });
-        },
-        'have the request':function(err, req, res, rinfo){
-          assert.isObject(req);
-        },
-        'have the response':function(err, req, res, rinfo){  
-          assert.isObject(res);
-          assert.equal(util.inspect(res.payload), util.inspect([10,11,12]));
-        },
-      }, //listen for request
-      'listen for send': {
-        topic:function(){
-          var server = new easyip.Service();
-          server.bind(2000 + easyip.EASYIP_PORT); 
-          var self = this;
-          var t = setTimeout(function(){
-            self.callback('timeout', null)
-          }, 1000);
-          server.on('send', function(packet){
-            clearTimeout(t);
-            self.callback(null, packet, server);
-          });
-        },
-        'have the packet':function(err, packet, server){
-          assert.isNull(err);
-          assert.isObject(packet);
-        },
-        'have a payload':function(err, packet, server){
-          assert.isNull(err);
-          assert.includes(packet, 'payload');
-          var p = packet.payload
-          assert.equal(util.inspect(p), util.inspect([10,11,12]));
-        },
-        'was put in storage':function(err, packet, server){
-          assert.equal(util.inspect(server.storage.areas[easyip.OPERANDS.FLAGWORD]), util.inspect({'0':10, '1':11, '2':12}));   
-          
-        }
-      }, //listen for send
-      'do request':{
-        topic:function(obj){
-          var self = this;
-          cb = this.callback;
 
-          obj.storage.setMask(easyip.OPERANDS.FLAGWORD, 1, 65534);
-          obj.doRequest({address:'127.0.0.1', port:1000 + easyip.EASYIP_PORT}
-            , easyip.OPERANDS.FLAGWORD
-            , 0 //offset
-            , 3 //size
-            , 0 //local offset
-            , function(err, packet){ cb(err,packet,obj); }
-          );
-        },
-        'does not have err':function(err, packet, service){
-          assert.isNull(err);
-        },
-        'have a packet':function(err, packet, service){
-          assert.isObject(packet);
-        },
-        'retreived content match':function(err,packet, service){
-            //1 should be masked from 11 to 10
-            assert.equal(util.inspect(service.storage.areas), util.inspect({ '1': { '0': 10, '1': 10, '2': 12 } }));
-        }
-      }, //do request
-      'do send':{
-        topic:function(){
-          var server = new easyip.Service();
-          var f0 = server.createField('FW0');
-          var f1 = server.createField('FW1');
-          var f2 = server.createField('FW2');
-          f0.value=10;
-          f1.value=11;
-          f2.value=12;
-          server.bind(0);
+describe('Service', function () {
+  // it('should have EASYIP_PORT', function (done) {
+  //   expect(easyip.EASYIP_PORT).to.equal(995);
+  //   done();
+  // });
 
-          var self = this;
-          var t = setTimeout(function(){
-            self.callback('timeout', null);
-          }, 1000);
-          server.doSend({address:'127.0.0.1', port:2000 + easyip.EASYIP_PORT}
-            , easyip.OPERANDS.FLAGWORD
-            , 0 //offset
-            , 3 //size
-            , 0 //local offset
-            ,function(err, packet){
-              clearTimeout(t);
-              self.callback(err, packet); 
-            }
-          );
-          
-        },
-        'does not have err':function(err, packet){
-          assert.isNull(err);
-        },
-        'have a packet':function(err, packet){
-          assert.isObject(packet);
-          assert.equal(packet.header.FLAGS, easyip.FLAGS.RESPONSE);
+  it('should be able to create new instance', function (done) {
+    var s = new easyip.Service();
+    expect(s).to.be.instanceof(EventEmitter);
+    expect(s).to.be.instanceof(easyip.Service);
+    expect(s.bind).to.be.a('function');
+    expect(s.address).to.be.a('function');
+    expect(s.doSend).to.be.a('function');
+    done();
+  });
+
+  describe('listen for request', function () {
+    var server, f0, f1, f2;
+    before(function (done) {
+      server = new easyip.Service();
+      f0 = server.createField('FW0');
+      f1 = server.createField('FW1');
+      f2 = server.createField('FW2');
+      f0.value = 10;
+      f1.value = 11;
+      f2.value = 12;
+      server.bind(easyip.EASYIP_PORT);
+
+      server.on('listening', function () {
+        done();
+      });
+    });
+
+    it('should emit request', function (done) {
+      var tasks = 2;
+      server.once('request', function (req, res) {
+        expect(req).to.be.a('object');
+        expect(res).to.be.a('object');
+        expect(res.payload).to.eql([10,11,12]);
+        checkDone();
+      });
+
+      server.doRequest('127.0.0.1', 'FLAGWORD', 0, 3, 4, function (err, packet) {
+        expect(err).to.not.exist;
+        expect(packet).to.exist;
+        checkDone();
+      });
+
+      function checkDone() {
+        tasks -= 1;
+        if (tasks <= 0) {
+          done();
         }
-      } //do request
-    } //created service
-  } //module
-  
-}).export(module);
+      }
+
+
+    });
+
+  });
+
+});

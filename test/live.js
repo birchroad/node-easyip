@@ -2,6 +2,8 @@
  *  Copyright © 2011 Peter Magnusson.
  *  All rights reserved.
  */
+
+/*
 var vows = require('vows')
   , assert = require('assert');
 
@@ -19,7 +21,7 @@ vows.describe('Service Live').addBatch({
   'Can bind':{
     topic:function(){
       var callback = this.callback;
-      
+
       var t = setTimeout(function(){
         callback('timeout');
       }, 3000);
@@ -33,7 +35,7 @@ vows.describe('Service Live').addBatch({
         service.storage.set(easyip.OPERANDS.FLAGWORD, i, i+1);
       }
       service.bind();
-    }, 
+    },
     'listens on port EASYIP_PORT':function(err, address){
       assert.isNull(err);
       assert.isObject(address);
@@ -50,9 +52,9 @@ vows.describe('Service Live').addBatch({
         service.on('request',function(packet, res, rinfo){
           clearTimeout(t);
           setTimeout(function(){
-            callback(null, packet, res, rinfo);    
+            callback(null, packet, res, rinfo);
           }, 500);
-          
+
         });
       },
       'is not timeout':function(err, packet, res, rinfo){
@@ -73,10 +75,10 @@ vows.describe('Service Live').addBatch({
             callback(err);
           else
             setTimeout(function(){
-              callback(null, packet, rinfo);  
+              callback(null, packet, rinfo);
             },500);
         });
-       
+
       },
       'no errors':function(err, packet, rinfo){
         assert.isNull(err);
@@ -95,5 +97,6 @@ vows.describe('Service Live').addBatch({
       },
     }//send
   } //bind
-  
+
 }).export(module);
+*/

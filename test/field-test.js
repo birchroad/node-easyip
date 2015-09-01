@@ -1,174 +1,141 @@
-var vows = require('vows')
-	, assert = require('assert');
+// var vows = require('vows')
+//  , assert = require('assert');
+var expect = require('chai').expect;
 
-var enums = require('../lib/enums')
-	, Storage = require('../lib/storage').Storage
-	, EventEmitter = require('events').EventEmitter;
+var Storage = require('../lib/storage').Storage
+  , EventEmitter = require('events').EventEmitter;
+
+var EasyField = require('../lib/easyfield');
+
+describe('EasyField', function () {
+
+  it('should have common instance methods and properties', function () {
+    var obj = new EasyField('F1.1', new Storage());
+    expect(obj).to.be.instanceof(EasyField);
+    expect(obj).to.be.instanceof(EventEmitter);
+    expect(obj).to.include.keys('isBit', 'operand', 'index', '_value', 'storage');
+    expect(obj.setActive).to.be.a('function');
+    expect(obj.on).to.be.a('function');
+    expect(obj.operand).to.equal('FLAGWORD');
+    expect(obj._value).to.equal(0);
+  });
+
+  describe('with BIT op - F9000.14', function () {
+    var st = new Storage();
+    var obj = new EasyField('F9000.14', st);
+
+    it('should be a bit', function () {
+      expect(obj.isBit).to.be.ok;
+    });
+
+    it('should have bitNum', function () {
+      expect(obj.bitNum).to.equal(14);
+    });
+
+    it('should have index', function () {
+      expect(obj.index).to.equal(9000);
+    });
+
+    it('bit != 0 || 1 should fail', function () {
+      expect(function () {
+        obj.value = 2;
+      }).to.throw(Error);
+
+      expect(function () {
+        obj.value = -1;
+      }).to.throw(Error);
+    });
+
+    describe('setting value = 1', function () {
+      before(function () {
+        obj.value = 1;
+      });
+
+      it('should have a changed bit', function () {
+        expect(obj.value).to.equal(1);
+        expect(obj.storage.get('FLAGWORD', 9000)).to.equal(16384);
+      });
+    });//--setting value = 1
+
+  });//--with BIT op
+
+  describe('with WORD op', function () {
+    var st = new Storage();
+    var obj = new EasyField('FW9100', st);
+
+    it('should NOT be a bit', function () {
+      expect(obj.isBit).to.be.false;
+    });
+
+    it('should have bitNum -1', function () {
+      expect(obj.bitNum).to.equal(-1);
+    });
+
+    it('should have index', function () {
+      expect(obj.index).to.equal(9100);
+    });
+
+    it('should have operand', function () {
+      expect(obj.operand).to.equal('FLAGWORD');
+    });
 
 
-var Class;
+    // it('should have bit manipulation functions', function () {
+    //  expect(obj.setBit).to.be.a('function');
+    //  expect(obj.checkBit, 'checkBit').to.be.a('function');
+    //  expect(obj.getBit, 'getBit').to.be.a('function');
+    // });
 
-vows.describe('Fields').addBatch({
-	'EasyField':{
-		topic:function(){
-			Class = require('../lib/easyfield');
-			return Class;
-		},
-		'can be required':function(EasyField){
-			assert.isFunction(EasyField);
-		},
-		'common instance methods and properties':{
-			topic:function(EasyField){
-				return new EasyField('F1.1', new Storage());
-			},
-			'instance of EasyField':function(obj){
-				assert.instanceOf(obj, Class);
-			},
-			'instance of EventEmitter':function(obj){
-				assert.instanceOf(obj, EventEmitter);
-			},
-			'has isBit':function(obj){
-				assert.includes(obj, 'isBit');
-			},
-			'has operand':function(obj){
-				assert.includes(obj, 'operand');
-				assert.equal(obj.operand, enums.OPERANDS.FLAGWORD);
-			},
-			'has index':function(obj){
-				assert.includes(obj, 'index');				
-			},
-			'has value':function(obj){
-				assert.includes(obj, '_value');
-				assert.equal(obj.value, 0);
-			},
-			'has storage':function(obj){
-				assert.includes(obj, 'storage');
-				assert.isObject(obj.storage);
-			},
-			'has setActive':function(obj){
-				assert.isFunction(obj.setActive);
-			},
-			'has .on':function(obj){
-				assert.isFunction(obj.on);
-			},
-		},
-		'with BIT op':{
-			topic:function(EasyField){
-				var st = new Storage();
-				return new EasyField('F9000.14', st);
-			},
-			'isBit':function(obj){
-				assert.isTrue(obj.isBit);
-			},
-			'has bitNum':function(obj){
-				assert.includes(obj, 'bitNum')
-				assert.equal(obj.bitNum, 14);
-			},
-			'has index':function(obj){
-				assert.includes(obj, 'index');
-				assert.equal(obj.index, 9000);
-			},
-			'bit != 0 || 1 should fail':function(obj){
-				assert.throws(function(){
-					obj.value=2;
-				}, Error);
-				assert.throws(function(){
-					obj.value=-1;
-				},Error);
-			},
-			'setting value=1':{
-				'topic':function(obj){
-					obj.value=1;
-					return obj;
-				},
-				'bit was changed':function(obj){
-					//console.log(obj._value, obj.storage);
-					assert.equal(obj.value, 1);
-					assert.equal(obj.storage.get(enums.OPERANDS.FLAGWORD, 9000), 16384);
-				}
-			}//setting bits
-		},//bit EasyField
-		'with WORD op':{
-			topic:function(EasyField){
-				var st = new Storage();
-				return new EasyField('FW9100', st);
-			},
-			'has isBit':function(obj){
-				assert.includes(obj, 'isBit');
-				assert.isFalse(obj.isBit);
-			},
-			'has bitNum':function(obj){
-				assert.includes(obj, 'bitNum')
-				assert.equal(obj.bitNum, -1);
-			},
-			'has operand':function(obj){
-				assert.includes(obj, 'operand');
-				assert.equal(obj.operand, enums.OPERANDS.FLAGWORD);
-			},
-			'has index':function(obj){
-				assert.includes(obj, 'index');
-				assert.equal(obj.index, 9100);
-			},
-			// 'have bit manipulation functions':function(obj){
-			// 	assert.isFunction(obj.setBit);
-			// 	assert.isFunction(obj.getBit);
-			// 	assert.isFunction(obj.checkBit);
-			// },
-			'> WORD should fail':function(obj){
-				assert.throws(function(){obj.value=70000;}, Error);
-			},
-			'can set value':function(obj){
-				obj.value=65535;
-				assert.equal(obj.value, 65535);
-				assert.equal(obj.value.toString(2), '1111111111111111');
-				assert.equal(obj.storage.get(enums.OPERANDS.FLAGWORD, 9100), 65535);
-				//assert.equal(obj.storage.get(enum.OPERANDS.FLAGWORD, 9100), 3400);
-			},
-			'can do bit manipulation':function(obj){
-				obj.value=0;
-				obj.setBit(0);
-				assert.equal(obj.value, 1);
-				obj.setBit(1);
-				assert.equal(obj.value, 3);
-			},
-		},//word EasyField
-		'emit changed word':{
-			'topic':function(EasyField){
-				var fn = this.callback;
-				var st = new Storage();
-				var f = new EasyField('FW10', st);
-				f.on('changed', function(sender, pv, cv){
-					fn(null, sender, pv, cv)
-				});
-				f.setActive();
-				st.set(enums.OPERANDS.FLAGWORD, 10, 20);
-			},
-			'triggered':function(err, sender, pv, cv){
-				assert.isTrue(pv !== cv);
-				assert.equal(cv, 20);
-				assert.equal(sender.storage.get(enums.OPERANDS.FLAGWORD, 10), 20);
-				
-			}
-		},//emit changed word
-		'emit changed bit':{
-			'topic':function(EasyField){
-				var fn = this.callback;
-				var st = new Storage();
-				var f = new EasyField('F10.4', st);
-				f.on('changed', function(sender, pv, cv){
-					fn(null, sender, pv, cv)
-				});
-				f.setActive();
-				st.set(enums.OPERANDS.FLAGWORD, 10, 16);
-			},
-			'triggered':function(err, sender, pv, cv){
-				assert.isTrue(pv !== cv);
-				assert.equal(cv, 1);
-				//bit 4 = 16 dec
-				assert.equal(sender.storage.get(enums.OPERANDS.FLAGWORD, 10), 16);
-				
-			}
-		}//emit changed word
-	}
-	
-}).export(module);
+    it('> WORD should throw Error', function () {
+      expect(function () {
+        obj.value = 70000;
+      }).to.throw(Error);
+    });
+
+    it('should do bit manipulation', function () {
+      obj.value = 0;
+      obj.setBit(0);
+      expect(obj.value).to.equal(1);
+      obj.setBit(1);
+      expect(obj.value).to.equal(3);
+    });
+  });//--with WORD op
+
+  describe('should emit', function () {
+
+
+    it('changed word', function (done) {
+      var st = new Storage();
+      var obj = new EasyField('FW10', st);
+      obj.setActive();
+
+
+      obj.on('changed', function (sender, pv, cv) {
+        expect(sender).to.be.equal(obj);
+        expect(pv).to.equal(0);
+        expect(cv).to.equal(20);
+        done();
+      });
+
+      st.set('FLAGWORD', 10, 20);
+    });
+
+    it('changed bit', function (done) {
+      var st = new Storage();
+      var obj = new EasyField('F10.4', st);
+      obj.setActive();
+
+
+      obj.on('changed', function (sender, pv, cv) {
+        expect(sender).to.be.equal(obj);
+        expect(pv).to.equal(0);
+        expect(cv).to.equal(1);
+        done();
+      });
+
+      st.set('FLAGWORD', 10, 16);
+    });
+
+  });//--emitting
+
+});//--EasyField
