@@ -43,6 +43,11 @@ describe('Service', function () {
         done();
       });
     });
+    
+    after(function (done) {
+      server.close();
+      done();
+    });
 
     it('should emit request', function (done) {
       var tasks = 2;
