@@ -15,7 +15,7 @@ the same structure.
 
 __Header__
 | Offset    | Name              | Datatype  | Description
-| :-        | :-                | :-        |
+| -:        | :-                | :-        | :-
 | 0         | Flags             | Byte      | 
 | 1         | Error             | Byte      |
 | 2         | Counter           | Byte      | message counter
@@ -61,11 +61,11 @@ A packet can be both request and response at the same time, somewhat crazy.
 | 0x01  | Operand Error | Partner does not support selected operand
 | 0x02  | Offset Error  | The partner device can not accept this offset address
 | 0x04  | Size Error    | Partner thinks the number of requested/sent operands is to big
-| 0x10  | Timeout       |
+| 0x10  | Other Error   | Could be for example timeout
 
 ### Operad Types
 | Value | Name          | Description
-| :-    | :-            | :-
+| -:    | :-            | :-
 | 0     | Empty         | No payload used
 | 1     | Flagword      | Flagwords are to be used
 | 2     | Inputword     | Inputwords, i.e. physical inputs
