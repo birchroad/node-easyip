@@ -21,18 +21,21 @@ __Header__
 | 2         | Counter           | Byte      | message counter
 | 3         | Index             | Byte      |
 | 4         | Reserved          | Byte      | Reserved/Unknown
-| 5         | Send Type         | Byte      | What operand/type of data that will be sent
-| 6         | Send Size         | Byte      | Number of words 
-| 7         | Send Offset       | Byte      |
+| 5         | SendType          | Byte      | What operand/type of data that will be sent
+| 6         | SendSize          | Byte      | Number of words 
+| 7         | SendOffset        | Byte      |
 | 8         | Reserved          | Byte      | Reserved/Unknown
-| 9         | Request Type      | Byte      | operand/type requested
-| 10        | Request Size      | Byte      |
-| 11        | Request Offset    | Byte      |
-| 12        | Req Offset Client | Byte      |
+| 9         | ReqType           | Byte      | operand/type requested
+| 10        | ReqtSize          | Byte      | requested number of words/strings
+| 11        | RequestOffset     | Byte      | requested offset address
+| 12        | ReqOffsetClient   | Byte      |
 
 __Payload__
 Any data after the packet header is the optional payload and the size and type of payload
 depends on data in the header and if it's a request or response.
+
+If the packet flag bit for response is set then the payload is defined
+by `ReqType` and `ReqSize`. 
 
 * Strings should be 0 terminated.
 * Most everything else should be zero or more words (2 bytes) of data. 
@@ -40,7 +43,8 @@ depends on data in the header and if it's a request or response.
 
 
 ### Flags
-Bit encoded field
+Bit encoded field.
+A packet can be both request and response at the same time, somewhat crazy.
 
 | Value | Name          | Description
 | :-    | :-            | :-
@@ -62,7 +66,7 @@ Bit encoded field
 ### Operad Types
 | Value | Name          | Description
 | :-    | :-            | :-
-| 0     | Empty         |
+| 0     | Empty         | No payload used
 | 1     | Flagword      | Flagwords are to be used
 | 2     | Inputword     | Inputwords, i.e. physical inputs
 | 3     | Outputword    | Outputword, i.e. physical outputs
